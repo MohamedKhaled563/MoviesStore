@@ -7,17 +7,18 @@
 
 import UIKit
 import CoreData
+import SDWebImage
 
 protocol DetailsPageViewControllerDelegate: class {
 //    func detailsPageViewControllerDelegateRequireDetails(_ controller: DetailsPageViewController) -> MovieDetails
         func detailsPageViewControllerDelegateRequireDetails(_ controller: DetailsPageViewController) -> NSManagedObject
-
 }
 
 
 class DetailsPageViewController: UIViewController {
     @IBOutlet weak var titleLabel: UILabel!
-    @IBOutlet weak var imageView: UILabel!
+    @IBOutlet weak var imageLabel: UILabel!
+    @IBOutlet weak var movieImageView: UIImageView!
     @IBOutlet weak var ratingLabel: UILabel!
     @IBOutlet weak var releaseYearLabel: UILabel!
     @IBOutlet weak var genreLabel: UILabel!
@@ -50,6 +51,8 @@ class DetailsPageViewController: UIViewController {
         
         titleLabel.text?.append("\(movieDetails?.value(forKey: "title" ) ?? "")")
         // TODO:- Add image download pod and download image in and put it in the view
+        let movieURL = movieDetails?.value(forKey: "image") as? String
+        movieImageView.sd_setImage(with: URL(string: movieURL ?? ""), placeholderImage: UIImage(named: "movieImage.png"))
         ratingLabel.text?.append("\(movieDetails?.value(forKey: "rating") ?? 0)" )
         releaseYearLabel.text?.append("\(movieDetails?.value(forKey: "releaseYear") ?? 0)" )
         genreLabel.text?.append("\(movieDetails?.value(forKey: "genre") ?? "")")

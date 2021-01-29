@@ -7,6 +7,7 @@
 
 import UIKit
 import CoreData
+import SDWebImage
 
 class MainPageViewController: UIViewController {
 
@@ -14,11 +15,22 @@ class MainPageViewController: UIViewController {
     //
     var movies: ResultWrapper?
     var savedMovies: [NSManagedObject]?
+    var filteredMovies: [NSManagedObject] = []
     var selectedMovieIndex: Int!
+    var searchItem: String?
+    var isValidTitle: Bool {
+        if filteredMovies.count == 0{
+            return false
+        }
+        else {
+            return true
+        }
+    }
     
     // MARK:- Outlets
     //
     @IBOutlet weak var moviesTableView: UITableView!
+    @IBOutlet weak var searchBar: UISearchBar!
     
     
     // MARK:- Methods
@@ -28,6 +40,7 @@ class MainPageViewController: UIViewController {
         
         moviesTableView.delegate = self
         moviesTableView.dataSource = self
+        searchBar.delegate = self
         
         let cellNib = UINib(nibName: "MoviesTableViewCell", bundle: .none)
         moviesTableView.register(cellNib, forCellReuseIdentifier: "MovieCellIdentifier")
@@ -39,25 +52,6 @@ class MainPageViewController: UIViewController {
     
     // MARK:- Helper methods
     //
-    func refreshTable(){
-        /*
-        movies.removeAll()
-        for movie in data{
-            for (key, value) in movie{
-                if key == "title"{
-                    movies.append(value as! String)
-                }
-            }
-        }
-        DispatchQueue.main.async {
-            self.moviesTableView.reloadData()
-        }*/
-        DispatchQueue.main.async {
-            self.moviesTableView.reloadData()
-        }
-        print("Table refreshed")
-    }
-    
     func loadMovies(){
         
         // Trying load data from core data
@@ -66,13 +60,37 @@ class MainPageViewController: UIViewController {
         // If data exist --> finish loading data
         if savedMovies?.count != 0 {
             print("Data is loaded from core data")
-            refreshTable()
+            moviesTableView.reloadData()
+            print("Table refreshed")
             return
         }
         
         // If data doesn't exist, try download them
         loadDataFromInternetAndSaveIt()
-        self.moviesTableView.reloadData()
+    }
+    
+    func getSearchResults(){
+        filteredMovies.removeAll()
+        guard let movies = savedMovies else { return }
+        var correctMovie: NSManagedObject?
+//        for i in 0..<movies.count{
+//            if movies[i].value(forKey: "title") as? String == searchItem{
+//                correctMovie = movies[i]
+//                break
+//            }
+//        }
+        
+        for movie in movies {
+            if movie.value(forKey: "title") as? String == searchItem{
+                correctMovie = movie
+                break
+            }
+        }
+
+        if let correctMovie = correctMovie{
+            filteredMovies.append(correctMovie)
+            moviesTableView.reloadData()
+        }
     }
     // MARK:- Networking
     //
@@ -91,7 +109,11 @@ class MainPageViewController: UIViewController {
                 let resultWrapper = try JSONDecoder().decode(ResultWrapper.self, from: data)
                 self.movies = resultWrapper
                 print ("Data loaded from internet")
-                self.saveData(data: resultWrapper)
+                DispatchQueue.main.async {
+                    self.saveData(data: resultWrapper)
+                    self.moviesTableView.reloadData()
+                    print("Table refreshed")
+                }
             }
             catch{
                 print("Downloading error: '\(error.localizedDescription)'")
@@ -106,12 +128,24 @@ class MainPageViewController: UIViewController {
 //
 extension MainPageViewController: UITableViewDelegate, UITableViewDataSource{
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        savedMovies?.count ?? 0
+        if isValidTitle{
+            return filteredMovies.count
+        } else{
+            return savedMovies?.count ?? 0
+        }
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "MovieCellIdentifier", for: indexPath) as! MoviesTableViewCell
-        cell.movieNameLabel.text = savedMovies?[indexPath.row].value(forKey: "title") as? String
+        if (isValidTitle){
+            cell.movieNameLabel.text = filteredMovies[indexPath.row].value(forKey: "title") as? String
+            let movieURL = filteredMovies[indexPath.row].value(forKey: "image") as? String
+            cell.movieImageView.sd_setImage(with: URL(string: movieURL ?? ""), placeholderImage: UIImage(named: "movieImage.png"))
+        } else {
+            cell.movieNameLabel.text = savedMovies?[indexPath.row].value(forKey: "title") as? String
+            let movieURL = savedMovies?[indexPath.row].value(forKey: "image") as? String
+            cell.movieImageView.sd_setImage(with: URL(string: movieURL ?? ""), placeholderImage: UIImage(named: "movieImage.png"))
+        }
         return cell
     }
 
@@ -122,6 +156,25 @@ extension MainPageViewController: UITableViewDelegate, UITableViewDataSource{
         detailsVC.delegate = self
         navigationController?.pushViewController(detailsVC, animated: true)
         tableView.deselectRow(at: indexPath, animated: true)
+    }
+}
+
+// MARK:- Search bar delegate
+//
+extension MainPageViewController: UISearchBarDelegate{
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchItem = searchBar.text
+        // If search for nothing, do nothing
+        if (searchItem != "")
+        {
+            print ("you searched about \(searchItem ?? "")")
+            getSearchResults()
+        }
+        else{
+            print ("you searched about \(searchItem ?? "")")
+            filteredMovies.removeAll()
+            moviesTableView.reloadData()
+        }
     }
 }
 
