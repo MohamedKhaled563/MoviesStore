@@ -37,6 +37,9 @@ class MainPageViewController: UIViewController {
     //
     override func viewDidLoad() {
         super.viewDidLoad()
+                
+        navigationItem.hidesBackButton = true
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Logout", style: .done, target: self, action: #selector(logout))
         
         moviesTableView.delegate = self
         moviesTableView.dataSource = self
@@ -48,7 +51,10 @@ class MainPageViewController: UIViewController {
         loadMovies()
     }
     
-    
+    @objc func logout(){
+        UserDefaults.standard.set(false, forKey: "IS_LOGIN")
+        self.navigationController?.popViewController(animated: true)
+    }
     
     // MARK:- Helper methods
     //
